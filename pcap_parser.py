@@ -1,10 +1,10 @@
 """
     @author Adrian Gomez Martin
 """
-import os.path, argparse, codecs, sys
+import os.path, argparse, codecs, sys, requests
 from scapy.all import *
 from colorama import Fore
-
+from bs4 import BeautifulSoup
 """
     Imprime distintos tipos de mensaje, el mensaje se recibe como parametro
 """
@@ -72,12 +72,17 @@ def procesar_pcap(file, puerto_destino, ip_destino):
     Esta funcion decodifica el dato que recibe en base64
 """
 def decodificar_raw_base64(dato):
+    c = 0
     cadenas_base64 = str(dato).split("HTTP")[0].split("?")[1].split("&")
-    imprime("DATOS OBTENIDOS","inf")
+    imprime("\n\nCORREOS FILTRADOS","inf")
     for base64 in cadenas_base64:
         base64 = codecs.encode(base64,"utf-8")
         decodificado = codecs.decode(base64,"base64")
-        imprime(str(decodificado))
+        c += 1
+        if c == 2:
+            obtener_correos(decodificado)
+        else:
+            imprime(codecs.decode(decodificado,"utf-8"))
 
 """
     Esta función gestiona los posibles errores al recibir argumentos
@@ -110,6 +115,25 @@ def limpiar_argumentos(file, port, address):
         else:
             exit()
     return salida
+
+"""
+    Esta funcion busca los correos filtrados en el la url que recibe por parametro
+"""
+def obtener_correos(url):
+    salida = ""
+    tomar_cadena = False
+    respuesta = requests.get(url)
+    bs = BeautifulSoup(respuesta.text, "html.parser")
+    correos = bs.find_all('textarea')
+    for letra in str(correos):
+        if tomar_cadena:
+            if letra == "<":
+                tomar_cadena = False
+            else:
+                salida += letra
+        if letra == ">":
+            tomar_cadena = True
+    imprime(str(salida).split("#")[0])
 
 def main():
     parser = argparse.ArgumentParser()
